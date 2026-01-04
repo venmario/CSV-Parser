@@ -6,7 +6,7 @@
 
     <groupId>org.mihok.parsefy</groupId>
     <artifactId>parsefy</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.1-SNAPSHOT</version>
     <distributionManagement>
         <repository>
             <id>github</id>
@@ -51,7 +51,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>5.11.0</version> <!-- Use the latest stable version -->
+            <version>5.11.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
