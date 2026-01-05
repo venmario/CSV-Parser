@@ -57,6 +57,7 @@ dependencies {
 ```java
 import org.mihok.parsefy.annotation.*;
 import org.mihok.parsefy.validation.*;
+import org.mihok.parsefy.core.*;
 
 @CsvSchema
 public class User {
@@ -86,11 +87,14 @@ public class User {
 ```java
 // Simple parsing - throws exception if errors occur
 List<User> users = Parsefy.builder(User.class)
-    .parse(new FileReader("users.csv"));
+    .parse(new FileReader("users.csv"))
+    .getResult()
+    .getValidRows();
 
 // Or get detailed results with error collection
-ParseResult<User> result = Parsefy.builder(User.class)
-    .parseWithResult(new FileReader("users.csv"));
+ParsefyResult<User> result = Parsefy.builder(User.class)
+    .parse(new FileReader("users.csv"))
+    .getResult();
 
 if (result.hasErrors()) {
     for (RowError error : result.getErrors()) {
@@ -108,7 +112,9 @@ List<User> validUsers = result.getValidRows();
 ```java
 List<User> users = Parsefy.builder(User.class)
     .delimiter(";")  // Use semicolon instead of comma
-    .parse(reader);
+    .parse(reader)
+    .getResult()
+    .getValidRows();
 ```
 
 ### Character Encoding
@@ -116,11 +122,15 @@ List<User> users = Parsefy.builder(User.class)
 ```java
 // Specify encoding explicitly
 List<User> users = Parsefy.builder(User.class)
-    .parse(inputStream, StandardCharsets.UTF_8);
+    .parse(inputStream, StandardCharsets.UTF_8)
+    .getResult()
+    .getValidRows();
 
 // From file with Windows-1252 encoding
 List<User> users = Parsefy.builder(User.class)
-    .parse(new File("data.csv"), Charset.forName("Windows-1252"));
+    .parse(new File("data.csv"), Charset.forName("Windows-1252"))
+    .getResult()
+    .getValidRows();
 ```
 
 ### Validation Modes
@@ -129,12 +139,15 @@ List<User> users = Parsefy.builder(User.class)
 // Strict mode (default) - stops on first error
 List<User> users = Parsefy.builder(User.class)
     .strictMode(true)
-    .parse(reader);
+    .parse(reader)
+    .getResult()
+    .getValidRows();
 
 // Lenient mode - collects all errors
-ParseResult<User> result = Parsefy.builder(User.class)
+ParsefyResult<User> result = Parsefy.builder(User.class)
     .strictMode(false)
-    .parseWithResult(reader);
+    .parse(reader)
+    .getResult();
 ```
 
 ## Built-in Validators
@@ -166,79 +179,6 @@ public class PositiveNumberValidator implements FieldValidator<BigDecimal> {
 @CsvColumn(name = "price")
 @CustomValidator(PositiveNumberValidator.class)
 private BigDecimal price;
-```
-
-### Custom Validator with External Service
-
-```java
-public class CustomerExistsValidator implements FieldValidator<String> {
-    @Override
-    public ValidationResult validate(String customerId, ValidationContext context) {
-        // Get injected service
-        CustomerService service = context.getDependency(CustomerService.class);
-        
-        if (!service.exists(customerId)) {
-            return ValidationResult.error("Customer not found: " + customerId);
-        }
-        
-        return ValidationResult.success();
-    }
-}
-
-// Use with dependency injection
-CustomerService customerService = new CustomerService();
-
-List<Order> orders = Parsefy.builder(Order.class)
-    .addDependency(CustomerService.class, customerService)
-    .parse(reader);
-```
-
-### Cross-Field Validation
-
-```java
-public class ShippingDateValidator implements FieldValidator<LocalDate> {
-    @Override
-    public ValidationResult validate(LocalDate shippingDate, ValidationContext context) {
-        // Access other fields from the same row
-        LocalDate orderDate = (LocalDate) context.getFieldValue("order_date");
-        
-        if (orderDate != null && shippingDate != null) {
-            if (shippingDate.isBefore(orderDate)) {
-                return ValidationResult.error(
-                    "Shipping date cannot be before order date"
-                );
-            }
-        }
-        
-        return ValidationResult.success();
-    }
-}
-```
-
-### Stateful Validation (Track Across Rows)
-
-```java
-public class UniqueEmailValidator implements FieldValidator<String> {
-    @Override
-    public ValidationResult validate(String email, ValidationContext context) {
-        ParserState state = context.getParserState();
-        
-        @SuppressWarnings("unchecked")
-        Set<String> seenEmails = state.getGlobal("seenEmails", Set.class);
-        
-        if (seenEmails == null) {
-            seenEmails = new HashSet<>();
-            state.setGlobal("seenEmails", seenEmails);
-        }
-        
-        if (seenEmails.contains(email.toLowerCase())) {
-            return ValidationResult.error("Duplicate email: " + email);
-        }
-        
-        seenEmails.add(email.toLowerCase());
-        return ValidationResult.success();
-    }
-}
 ```
 
 ## Type Conversion
